@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scripts For Everyone</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for Inter font and custom colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-red': '#ef4444',
+                        'soft-gray': '#f3f4f6',
+                        'dark-bg': '#1f2937', // Custom dark background for the frame
+                        'darker-bg': '#111827', // Custom darker background for the body
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        
+        /* Custom Text Shadow for Yellow Glow Effect */
+        .text-shadow-lg {
+            /* Yellow Glow/Halo Effect: soft yellow shadow */
+            text-shadow: 
+                0 0 5px rgba(255, 255, 0, 0.7), 
+                0 0 10px rgba(255, 255, 0, 0.5), 
+                0 0 15px rgba(255, 255, 0, 0.3); 
+        }
+
+        /* Mobile Frame Simulation - Dark Dynamic Color with GIF background */
+        .mobile-frame {
+            max-width: 400px; /* iPhone 15 Pro width simulation */
+            height: 100vh;
+            margin: auto;
+            border-left: 6px solid #000;
+            border-right: 6px solid #000;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            
+            /* GIF Background Styles */
+            background-image: url('https://i.postimg.cc/VvcjHpTh/giphy.gif');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #1f2937; /* Fallback */
+        }
+
+        /* Hide scrollbar but allow scrolling */
+        .mobile-frame::-webkit-scrollbar {
+            display: none; /* For Chrome, Safari, and Opera */
+        }
+        .mobile-frame {
+            -ms-overflow-style: none;  /* For IE and Edge */
+            scrollbar-width: none;  /* For Firefox */
+        }
+
+
+        /* Custom style for the scripts dropdown */
+        .script-select-container {
+            position: relative;
+        }
+
+        /* Hide scrollbar for script list too */
+        .script-list {
+            max-height: 150px; 
+            overflow-y: scroll;
+            border: 1px solid #374151; 
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+        }
+        .script-list::-webkit-scrollbar {
+            display: none;
+        }
+        .script-list {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-darker-bg font-sans">
+
+    <div id="app" class="mobile-frame">
+        <!-- Content will be rendered here by JavaScript -->
+    </div>
+
+    <script>
+        // --- MOCK DATA ---
+        // Games reordered, mock stats updated to be smaller and more realistic
+        const ALL_GAMES = [
+            { id: 1, name: "Roblox", imageUrl: "https://i.postimg.cc/HL12cJWW/roblox.png", stats: { downloads: "50M+", activations: "98K", online: "1.5K" } },
+            { id: 2, name: "Steal A Brainrot", imageUrl: "https://i.postimg.cc/jjYXwWqK/brainrot.png", stats: { downloads: "1.2M", activations: "25K", online: "500" } },
+            { id: 5, name: "FreeFire", imageUrl: "https://i.postimg.cc/yxJKJpnF/freefire-1686171898799.jpg", stats: { downloads: "8.5M", activations: "120K", online: "2.5K" } },
+            { id: 6, name: "PUBG Mobile", imageUrl: "https://i.postimg.cc/R0R42HNL/images.jpg", stats: { downloads: "15M+", activations: "150K", online: "3.2K" } },
+            { id: 3, name: "Brawl Stars", imageUrl: "https://i.postimg.cc/LsFTYq48/brawlstars.png", stats: { downloads: "6.1M", activations: "70K", online: "1.8K" } },
+            { id: 4, name: "Clash Royale", imageUrl: "https://i.postimg.cc/Xv68GZNj/clashroyale.png", stats: { downloads: "9.9M", activations: "110K", online: "2.1K" } },
+        ];
+
+        let SCRIPTS = []; // This will be populated dynamically per game
+
+        function generateScriptNames() {
+            const scripts = [];
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            // Generate a random number of scripts between 20 and 35
+            const count = Math.floor(Math.random() * (35 - 20 + 1)) + 20; 
+            
+            for (let i = 0; i < count; i++) {
+                let name = '';
+                for (let j = 0; j < 16; j++) {
+                    name += characters.charAt(Math.floor(Math.random() * characters.length));
+                }
+                scripts.push(name + '.scptsss');
+            }
+            return scripts;
+        }
+
+        // --- APP STATE ---
+        let appState = {
+            currentView: 'catalog', // 'catalog', 'game'
+            selectedGame: null,
+            accountName: '',
+            selectedScripts: new Set(),
+            connectionStatus: 'disconnected', // 'disconnected', 'connecting', 'connected', 'activated'
+            isScriptsActive: false,
+            searchQuery: '' // New state for search query
+        };
+
+        const appElement = document.getElementById('app');
+
+        // --- RENDER FUNCTIONS ---
+
+        /**
+         * Renders the main application based on the current state.
+         */
+        function renderApp() {
+            appElement.innerHTML = ''; // Clear content
+            appElement.scrollTop = 0; // Scroll to top on new view
+            
+            let html = '';
+            
+            // Render Header (always present)
+            const headerTitleText = appState.currentView === 'catalog' 
+                                  ? 'Scripts for Everyone' 
+                                  : appState.selectedGame.name;
+            
+            // Gradient/Shadow/Centering Styles for Catalog Title
+            // Changed from red to yellow gradient and added yellow text shadow for glow
+            const gradientTextClass = 'bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 to-yellow-500 text-shadow-lg';
+            const headerTitleStyle = appState.currentView === 'catalog' 
+                                   ? `text-3xl font-extrabold uppercase tracking-wider ${gradientTextClass}` 
+                                   : 'text-xl font-bold text-gray-100'; 
+
+            const backButton = appState.currentView === 'game' ? `
+                <button onclick="navigate('catalog')" class="text-primary-red hover:text-red-400 transition duration-150 p-2 -ml-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            ` : '<div class="w-6"></div>'; // Placeholder for centering
+
+            const headerInnerClass = appState.currentView === 'catalog' 
+                                    ? 'flex items-center justify-between p-4 shadow-xl' 
+                                    : 'flex items-center justify-between p-4 shadow-xl';
+
+            html += `
+                <!-- Opaque header -->
+                <header class="sticky top-0 bg-gray-900 border-b border-gray-700 z-10"> 
+                    <div class="${headerInnerClass}">
+                        ${backButton}
+                        <!-- H1 takes up available space and text is centered -->
+                        <h1 class="${headerTitleStyle} ${appState.currentView === 'catalog' ? 'text-center flex-grow' : ''}">${headerTitleText}</h1>
+                        <div class="w-6"></div>
+                    </div>
+                </header>
+                <!-- Added specific background for main content to overlay GIF correctly -->
+                <main class="p-4 pt-0 bg-dark-bg bg-opacity-70">
+            `;
+
+            if (appState.currentView === 'catalog') {
+                html += renderCatalogPage();
+            } else if (appState.currentView === 'game' && appState.selectedGame) {
+                html += renderGamePage();
+            }
+
+            html += `</main>`;
+            appElement.innerHTML = html;
+            
+            // Re-attach listeners is handled implicitly by using inline handlers.
+            // We call updateGameControls after a full render to ensure the connect button reflects the state.
+            if (appState.currentView === 'game') {
+                updateGameControls();
+            }
+        }
+
+        /**
+         * Renders the Catalog Page (list of games).
+         */
+        function renderCatalogPage() {
+            // Filter games based on the search query
+            const filteredGames = ALL_GAMES.filter(game =>
+                game.name.toLowerCase().includes(appState.searchQuery.toLowerCase())
+            );
+
+            let searchBarHtml = `
+                <div class="pt-4 pb-4">
+                    <div class="relative">
+                        <input type="text" id="search-input" 
+                               value="${appState.searchQuery}"
+                               oninput="updateSearchQuery(this.value)"
+                               class="w-full p-3 pl-10 border border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-primary-red focus:border-primary-red shadow-inner transition duration-150" 
+                               placeholder="Search your favorite game scripts">
+                        <!-- Search Icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+            `;
+
+
+            let listHtml = filteredGames.map(game => `
+                <!-- Main Container: Vertical layout for button -->
+                <div class="flex flex-col bg-gray-900 bg-opacity-80 p-4 rounded-xl shadow-lg mb-4 transition duration-300 hover:shadow-2xl hover:ring-2 ring-primary-red">
+                    
+                    <!-- Top Section: Image, Name, Stats (Horizontal Flex, even columns) -->
+                    <div class="flex mb-4 space-x-4">
+                        <!-- Left Column (Image) - w-1/2 -->
+                        <div class="w-1/2 h-32 flex-shrink-0 rounded-xl overflow-hidden shadow-inner border border-gray-700">
+                            <img src="${game.imageUrl}" 
+                                 alt="${game.name} cover image"
+                                 class="w-full h-full object-cover"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/180x128/1f2937/d1d5db?text=${game.name.slice(0, 5)}'; this.className+=' p-3'"
+                            >
+                        </div>
+                        
+                        <!-- Right Column (Game Info and Stats) - w-1/2, centered vertically -->
+                        <div class="w-1/2 flex flex-col justify-center"> 
+                            <h2 class="text-xl font-bold text-white mb-2">${game.name}</h2>
+                            <!-- Fictional Statistics Block -->
+                            <div class="flex flex-col gap-y-1 text-sm text-gray-400">
+                                
+                                <!-- Downloads (Dwnlds) -->
+                                <div class="flex items-center">
+                                    <span class="mr-2 text-primary-red">
+                                        <!-- Star Icon for Downloads -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-current" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M9.049 2.927c.3-.921 1.637-.921 1.936 0l1.243 3.824a1 1 0 00.95.691h4.029c.969 0 1.371 1.243.588 1.81l-3.267 2.376a1 1 0 00-.364 1.118l1.243 3.824c.3.921-.755 1.688-1.54 1.118l-3.267-2.376a1 1 0 00-1.176 0l-3.267 2.376c-.785.57-1.84-.197-1.54-1.118l1.243-3.824a1 1 0 00-.364-1.118L2.094 9.252c-.783-.567-.381-1.81.588-1.81h4.029a1 1 0 00.95-.691l1.243-3.824z" />
+                                        </svg>
+                                    </span>
+                                    <!-- Reduced size of numbers -->
+                                    <span class="font-medium text-white mr-2">${game.stats.downloads}</span>
+                                    <span class="text-xs">Dwnlds</span>
+                                </div>
+                                
+                                <!-- Activations (Activ.) -->
+                                <div class="flex items-center">
+                                    <span class="mr-2 text-green-400">
+                                        <!-- Check Icon for Activations -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </span>
+                                    <!-- Reduced size of numbers -->
+                                    <span class="font-medium text-white mr-2">${game.stats.activations}</span>
+                                    <span class="text-xs">Activ.</span>
+                                </div>
+                                
+                                <!-- Online (Online) -->
+                                <div class="flex items-center">
+                                    <span class="mr-2 text-blue-400">
+                                        <!-- Dot Icon for Online -->
+                                        <svg viewBox="0 0 8 8" class="h-3 w-3 fill-current">
+                                            <circle cx="4" cy="4" r="4" />
+                                        </svg>
+                                    </span>
+                                    <!-- Reduced size of numbers -->
+                                    <span class="font-medium text-white mr-2">${game.stats.online}</span>
+                                    <span class="text-xs">Online</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Select Button (Full Width, below stats) -->
+                    <button 
+                        onclick="selectGame(${game.id})"
+                        class="w-full bg-primary-red text-white font-semibold py-3 rounded-lg shadow-xl hover:bg-red-600 transition duration-150 active:scale-95">
+                        Select
+                    </button>
+                </div>
+            `).join('');
+
+            return `
+                ${searchBarHtml}
+                <div class="space-y-4">
+                    ${filteredGames.length > 0 ? listHtml : '<p class="text-gray-400 text-center py-8">No games found matching your search.</p>'}
+                </div>
+            `;
+        }
+
+        /**
+         * Renders the Game Page (Image and Form).
+         */
+        function renderGamePage() {
+            const game = appState.selectedGame;
+            // Note: We don't rely on isAllSelected here for UI state, as updateGameControls handles it live.
+            const scriptsSelectedCount = appState.selectedScripts.size;
+            const isAllSelected = scriptsSelectedCount === SCRIPTS.length && SCRIPTS.length > 0;
+
+            // Connection Status Display (p-4 instead of p-6 for Fit Content)
+            let statusHtml = '';
+            if (appState.connectionStatus === 'connecting') {
+                statusHtml = `
+                    <div id="connection-animation" class="flex flex-col items-center justify-center p-4 bg-orange-900 rounded-xl mb-4 border border-orange-800">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-200 mb-2"></div>
+                        <p class="text-sm font-medium text-orange-200">Connecting to game screen...</p>
+                    </div>
+                `;
+            } else if (appState.connectionStatus === 'connected' || appState.isScriptsActive) {
+                // Show connected status if connected or if scripts are active
+                statusHtml = `
+                    <div class="flex items-center justify-center p-4 ${appState.isScriptsActive ? 'bg-blue-900 border-blue-800' : 'bg-green-900 border-green-800'} rounded-xl mb-4 border">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${appState.isScriptsActive ? 'text-blue-300' : 'text-green-300'} mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <p class="text-sm font-medium ${appState.isScriptsActive ? 'text-blue-200' : 'text-green-200'}">${appState.isScriptsActive ? 'Scripts Running in Background' : 'Connection Established!'}</p>
+                    </div>
+                `;
+            }
+
+            // Determine button appearance and action
+            let buttonHtml;
+            if (appState.connectionStatus === 'disconnected') {
+                buttonHtml = `
+                    <button type="button" 
+                        onclick="attemptConnect()"
+                        class="w-full bg-primary-red text-white font-bold py-3 rounded-xl shadow-lg hover:bg-red-600 transition duration-150 active:scale-95 disabled:opacity-50"
+                        ${!appState.accountName || scriptsSelectedCount === 0 ? 'disabled' : ''}>
+                        Connect
+                    </button>
+                `;
+            } else if (appState.connectionStatus === 'connecting') {
+                buttonHtml = `
+                    <button type="button" disabled
+                        class="w-full bg-gray-600 text-white font-bold py-3 rounded-xl cursor-not-allowed flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Connecting...
+                    </button>
+                `;
+            } else if (appState.isScriptsActive) {
+                // Scripts Active -> Show Deactivate button (Red)
+                buttonHtml = `
+                    <button type="button" 
+                        onclick="deactivateScripts()"
+                        class="w-full bg-primary-red text-white font-bold py-3 rounded-xl shadow-lg hover:bg-red-600 transition duration-150 active:scale-95">
+                        Deactivate
+                    </button>
+                `;
+            } else {
+                // Connected but not yet Activated -> Show Activate button (Green)
+                buttonHtml = `
+                    <button type="button" 
+                        onclick="activateScripts()"
+                        class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-green-600 transition duration-150 active:scale-95">
+                        Activate Scripts
+                    </button>
+                `;
+            }
+
+
+            let formHtml = `
+                <!-- Larger Image - MADE SQUARE (w-full aspect-square) and margin (mb-4) for Fit Content -->
+                <div class="w-full aspect-square flex items-center justify-center rounded-xl overflow-hidden mb-4 shadow-2xl border-2 border-gray-700">
+                    <img src="${game.imageUrl}" 
+                         alt="${game.name} main image"
+                         class="w-full h-full object-cover"
+                         onerror="this.onerror=null; this.src='https://placehold.co/400x400/1f2937/d1d5db?text=${game.name}'; this.className+=' p-4'"
+                    >
+                </div>
+                
+                ${statusHtml}
+
+                <form id="game-script-form" class="space-y-4">
+                    
+                    <!-- Account Name -->
+                    <div>
+                        <label for="account-name" class="block text-sm font-medium text-gray-200 mb-1">Account Name</label>
+                        <input type="text" id="account-name" 
+                               value="${appState.accountName}"
+                               oninput="updateAccountName(this.value)"
+                               class="w-full p-3 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-primary-red focus:border-primary-red shadow-inner" 
+                               placeholder="Enter account username" required
+                               ${appState.isScriptsActive ? 'disabled' : ''}>
+                    </div>
+                    
+                    <!-- Scripts List -->
+                    <div class="script-select-container">
+                        <label class="block text-sm font-medium text-gray-200 mb-2">Available Scripts</label>
+                        
+                        <!-- Select All Checkbox -->
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="select-all" 
+                                   onchange="toggleSelectAll(this.checked)"
+                                   ${isAllSelected ? 'checked' : ''}
+                                   ${appState.isScriptsActive ? 'disabled' : ''}
+                                   class="h-4 w-4 text-primary-red bg-gray-700 border-gray-600 rounded focus:ring-primary-red cursor-pointer">
+                            <label for="select-all" class="ml-2 text-sm font-medium text-white ${appState.isScriptsActive ? 'opacity-50' : ''}">Select All</label>
+                            <!-- Span updated by updateGameControls() -->
+                            <span class="ml-auto text-xs text-gray-400">Selected: ${scriptsSelectedCount}/${SCRIPTS.length}</span>
+                        </div>
+                        
+                        <!-- Scripts Dropdown/List -->
+                        <div id="scripts-list" class="script-list bg-gray-900 text-gray-200 border-gray-700">
+                            ${SCRIPTS.map(script => `
+                                <div class="flex items-center p-2 hover:bg-gray-700 rounded-md transition duration-100 cursor-pointer ${appState.isScriptsActive ? 'opacity-50 pointer-events-none' : ''}">
+                                    <input type="checkbox" id="script-${script}" 
+                                           data-script-name="${script}"
+                                           onchange="toggleScript('${script}', this.checked)"
+                                           ${appState.selectedScripts.has(script) ? 'checked' : ''}
+                                           ${appState.isScriptsActive ? 'disabled' : ''}
+                                           class="h-4 w-4 text-primary-red bg-gray-700 border-gray-600 rounded focus:ring-primary-red flex-shrink-0 cursor-pointer">
+                                    <label for="script-${script}" class="ml-3 text-xs font-mono text-gray-200 break-all flex-grow cursor-pointer">
+                                        ${script}
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="pt-2">
+                        ${buttonHtml}
+                    </div>
+                </form>
+            `;
+            return formHtml;
+        }
+
+        // --- GAME PAGE CONTROL UPDATE ---
+        /**
+         * Updates the dynamic UI elements on the Game Page (Connect button state, script counts).
+         * This prevents full page re-render and input focus loss.
+         */
+        function updateGameControls() {
+            const scriptsSelectedCount = appState.selectedScripts.size;
+            const connectButton = document.querySelector('#game-script-form button[onclick="attemptConnect()"]');
+            const selectedCountSpan = document.querySelector('.script-select-container .ml-auto');
+            
+            // Read current account name directly from input on the page (more reliable)
+            const accountNameInput = document.getElementById('account-name');
+            const currentAccountName = accountNameInput ? accountNameInput.value.trim() : appState.accountName.trim();
+            
+            // 1. Update Connect Button state
+            if (connectButton) {
+                // The button must be 'Connect' for this to apply (status 'disconnected')
+                if (appState.connectionStatus === 'disconnected') {
+                    const isDisabled = !currentAccountName || scriptsSelectedCount === 0;
+                    connectButton.disabled = isDisabled;
+                }
+            }
+
+            // 2. Update Selected Scripts count display
+            if (selectedCountSpan) {
+                selectedCountSpan.textContent = `Selected: ${scriptsSelectedCount}/${SCRIPTS.length}`;
+            }
+
+            // 3. Update 'Select All' checkbox state
+            const selectAllCheckbox = document.getElementById('select-all');
+            if (selectAllCheckbox) {
+                 const isAllSelected = scriptsSelectedCount === SCRIPTS.length && SCRIPTS.length > 0;
+                 if (selectAllCheckbox.checked !== isAllSelected) {
+                     selectAllCheckbox.checked = isAllSelected;
+                 }
+            }
+        }
+        
+        // --- NAVIGATION & STATE HANDLERS ---
+
+        /**
+         * Updates the search query and re-renders the catalog.
+         */
+        function updateSearchQuery(query) {
+            appState.searchQuery = query;
+            // Only re-render the catalog content, not the whole app, for faster filtering
+            const mainContent = document.querySelector('main');
+            if (mainContent && appState.currentView === 'catalog') {
+                mainContent.innerHTML = renderCatalogPage();
+                // Ensure the input field value is correctly set after partial re-render
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) {
+                    searchInput.value = query;
+                    searchInput.focus(); // Keep focus on search bar
+                }
+            }
+        }
+
+        /**
+         * Changes the view to the catalog.
+         */
+        function navigate(view) {
+            appState.currentView = view;
+            if (view === 'catalog') {
+                appState.selectedGame = null;
+                appState.connectionStatus = 'disconnected';
+                appState.selectedScripts.clear();
+                appState.isScriptsActive = false; // Reset scripts active state on leaving game page
+                SCRIPTS = []; // Clear current script list
+                // Ensure to read the final account name before leaving the page
+                const accountNameInput = document.getElementById('account-name');
+                if(accountNameInput) {
+                    appState.accountName = accountNameInput.value;
+                } else {
+                    appState.accountName = '';
+                }
+            }
+            renderApp();
+        }
+
+        /**
+         * Selects a game and navigates to the game page.
+         */
+        function selectGame(id) {
+            const game = ALL_GAMES.find(g => g.id === id);
+            appState.selectedGame = game;
+            appState.currentView = 'game';
+            appState.connectionStatus = 'disconnected';
+            
+            // Dynamically generate a new list of scripts for the selected game
+            SCRIPTS = generateScriptNames();
+            appState.selectedScripts.clear(); // Reset scripts selection for new game
+            appState.isScriptsActive = false; // Ensure scripts are not active for a new game
+            
+            renderApp();
+        }
+
+        /**
+         * Updates the account name in the state (needed for persistence/display upon navigation)
+         * and updates controls without full re-render.
+         */
+        function updateAccountName(name) {
+            appState.accountName = name; 
+            // DO NOT call renderApp() here. Only update the controls.
+            if (appState.currentView === 'game' && appState.connectionStatus === 'disconnected') {
+                // Use a short timeout to ensure the DOM has updated the input value
+                setTimeout(updateGameControls, 0); 
+            }
+        }
+
+        /**
+         * Toggles a single script selection.
+         */
+        function toggleScript(scriptName, isChecked) {
+            if (isChecked) {
+                appState.selectedScripts.add(scriptName);
+            } else {
+                appState.selectedScripts.delete(scriptName);
+            }
+            if (appState.currentView === 'game') {
+                updateGameControls();
+            }
+        }
+
+        /**
+         * Toggles selection for all scripts.
+         */
+        function toggleSelectAll(isChecked) {
+            if (isChecked) {
+                SCRIPTS.forEach(script => appState.selectedScripts.add(script));
+            } else {
+                appState.selectedScripts.clear();
+            }
+            
+            if (appState.currentView === 'game') {
+                // Manually update all script checkboxes since we are avoiding full renderApp() for button/count
+                SCRIPTS.forEach(script => {
+                    const checkbox = document.getElementById(`script-${script}`);
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                    }
+                });
+                updateGameControls();
+            }
+        }
+        
+        /**
+         * Simulates the connection process.
+         */
+        function attemptConnect() {
+            // Read account name directly from the input field before starting connection
+            const accountNameInput = document.getElementById('account-name');
+            appState.accountName = accountNameInput ? accountNameInput.value.trim() : '';
+
+            if (!appState.accountName || appState.selectedScripts.size === 0) {
+                showStatusMessage("Please enter an account name and select at least one script.", "red");
+                return;
+            }
+            
+            appState.connectionStatus = 'connecting';
+            renderApp();
+
+            // Simulate connection delay (3 seconds)
+            setTimeout(() => {
+                appState.connectionStatus = 'connected';
+                renderApp(); // Rerender to show "Connection Established" and "Activate" button
+                showStatusMessage("Successfully connected to the game instance!", "green");
+            }, 3000);
+        }
+
+        /**
+         * Simulates script activation.
+         */
+        function activateScripts() {
+            if (appState.connectionStatus !== 'connected') {
+                console.error("Not connected yet.");
+                return;
+            }
+            
+            showStatusMessage(`Activating ${appState.selectedScripts.size} scripts for ${appState.accountName}...`, "blue");
+            
+            // 1. Change the state to active
+            appState.isScriptsActive = true; 
+            
+            // 2. Re-render the app to show the "Deactivate" button and status
+            setTimeout(() => {
+                renderApp();
+                showStatusMessage("Scripts activated! Running in background.", "blue");
+            }, 1000); 
+        }
+
+        /**
+         * Simulates script deactivation.
+         */
+        function deactivateScripts() {
+             if (!appState.isScriptsActive) {
+                console.error("Scripts are not active.");
+                return;
+            }
+            
+            showStatusMessage(`Deactivating scripts for ${appState.accountName}...`, "primary-red");
+            
+            // 1. Change the state to inactive
+            appState.isScriptsActive = false; 
+            
+            // 2. Re-render the app to show the "Activate Scripts" button and connected status
+            setTimeout(() => {
+                renderApp();
+                showStatusMessage("Scripts deactivated. Ready for new selection.", "green");
+            }, 1000); 
+        }
+
+        // --- UI UTILITIES (Custom Alert Replacement) ---
+        function showStatusMessage(message, color) {
+            let statusBox = document.getElementById('status-box');
+            if (!statusBox) {
+                statusBox = document.createElement('div');
+                statusBox.id = 'status-box';
+                statusBox.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 p-3 rounded-xl shadow-xl transition-all duration-300 transform max-w-[350px] text-center text-white font-medium';
+                appElement.appendChild(statusBox);
+            }
+            
+            let bgColor = '';
+            if (color === 'green') bgColor = 'bg-green-500';
+            else if (color === 'red') bgColor = 'bg-primary-red';
+            else if (color === 'blue') bgColor = 'bg-blue-500';
+            else bgColor = 'bg-gray-700';
+            
+            statusBox.className = `fixed top-4 left-1/2 -translate-x-1/2 z-50 p-3 rounded-xl shadow-xl transition-all duration-300 transform max-w-[350px] text-center text-white font-medium ${bgColor}`;
+            statusBox.textContent = message;
+            statusBox.style.opacity = '1';
+            statusBox.style.transform = 'translate(-50%, 0)';
+
+            // Hide after 4 seconds
+            setTimeout(() => {
+                statusBox.style.opacity = '0';
+                statusBox.style.transform = 'translate(-50%, -100px)';
+                setTimeout(() => { if(statusBox.parentNode) statusBox.remove() }, 300);
+            }, 4000);
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            renderApp();
+        };
+
+    </script>
+</body>
+</html>
